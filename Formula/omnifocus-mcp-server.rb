@@ -3,7 +3,7 @@
 class OmnifocusMcpServer < Formula
   desc "High-performance MCP server for OmniFocus"
   homepage "https://github.com/ryanbantz/omnifocus-mcp-server"
-  url "https://github.com/ryanbantz/omnifocus-mcp-server/archive/refs/tags/v0.1.0.tar.gz"
+  url "https://github.com/ryanbantz/omnifocus-mcp-server/archive/refs/tags/v0.1.1.tar.gz"
   sha256 "REPLACE_WITH_ACTUAL_SHA256"
   license "MIT"
 

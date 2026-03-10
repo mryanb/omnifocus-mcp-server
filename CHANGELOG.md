@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-03-10
+
+### Fixed
+
+- Require Xcode 16.3 in CI workflows for Swift 6.1 compatibility (MCP Swift SDK requires `withThrowingTaskGroup` without `of:` parameter)
+
 ## [0.1.0] - 2026-03-10
 
 ### Added
@@ -45,4 +51,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CI/CD** — GitHub Actions for build/test/lint on push, automated universal binary releases on tag
 - **Homebrew formula** — `brew install ryanbantz/tap/omnifocus-mcp-server`
 
+[0.1.1]: https://github.com/ryanbantz/omnifocus-mcp-server/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/ryanbantz/omnifocus-mcp-server/releases/tag/v0.1.0
