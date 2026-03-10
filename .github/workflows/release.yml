@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-universal:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app
+
+      - name: Build arm64
+        run: swift build -c release --arch arm64
+
+      - name: Build x86_64
+        run: swift build -c release --arch x86_64
+
+      - name: Create universal binary
+        run: |
+          mkdir -p dist
+          lipo -create \
+            .build/arm64-apple-macosx/release/omnifocus-mcp-server \
+            .build/x86_64-apple-macosx/release/omnifocus-mcp-server \
+            -output dist/omnifocus-mcp-server-universal
+          chmod +x dist/omnifocus-mcp-server-universal
+
+      - name: Verify universal binary
+        run: |
+          file dist/omnifocus-mcp-server-universal
+          lipo -info dist/omnifocus-mcp-server-universal
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          shasum -a 256 omnifocus-mcp-server-universal > checksums.txt
+          cat checksums.txt
+
+      - name: Create tarball
+        run: |
+          cd dist
+          tar -czf omnifocus-mcp-server-${{ github.ref_name }}-universal.tar.gz omnifocus-mcp-server-universal
+          shasum -a 256 omnifocus-mcp-server-${{ github.ref_name }}-universal.tar.gz >> checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/omnifocus-mcp-server-universal
+            dist/omnifocus-mcp-server-${{ github.ref_name }}-universal.tar.gz
+            dist/checksums.txt
+          generate_release_notes: true
