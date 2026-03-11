@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import OmniFocusMCPServer
 
@@ -105,6 +106,29 @@ struct JavaScriptBuilderTests {
         #expect(js.contains("t.name = \"New Name\""))
         #expect(js.contains("t.flagged = true"))
         #expect(js.contains("t.markComplete()"))
+    }
+
+    @Test("updateTask moves task to a project")
+    func updateTaskProjectId() {
+        let js = JSBuilder.updateTask(id: "task1", patch: [
+            "projectId": "proj99",
+        ])
+        #expect(js.contains("Project.byIdentifier(\"proj99\")"))
+        #expect(js.contains("moveTasks([t], proj)"))
+    }
+
+    @Test("updateTask moves task to Inbox when projectId is null")
+    func updateTaskMoveToInbox() {
+        let patch: [String: Any] = ["projectId": NSNull()]
+        let js = JSBuilder.updateTask(id: "task1", patch: patch)
+        #expect(js.contains("moveTasks([t], Inbox)"))
+    }
+
+    @Test("updateTask response includes projectId and projectName")
+    func updateTaskResponseIncludesProject() {
+        let js = JSBuilder.updateTask(id: "task1", patch: ["name": "Test"])
+        #expect(js.contains("projectId:"))
+        #expect(js.contains("projectName:"))
     }
 
     @Test("field projection includes requested fields")

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-03-10
+
+### Added
+
+- `update_task` now supports `projectId` in the patch to move tasks between projects or back to Inbox (set to `null`)
+- `update_task` response now includes `projectId` and `projectName` fields
+
+### Fixed
+
+- GitHub username corrected from `ryanbantz` to `mryanb` in all URLs
+- Removed Homebrew references from public README until distribution criteria are met
+
 ## [0.1.1] - 2026-03-10
 
 ### Fixed
@@ -50,5 +62,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Safety controls** — Dry-run defaults, single-use confirm tokens (5-minute TTL), config-gated batch/delete operations, tool allowlist
 - **CI/CD** — GitHub Actions for build/test/lint on push, automated universal binary releases on tag
 
+[0.2.0]: https://github.com/mryanb/omnifocus-mcp-server/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/mryanb/omnifocus-mcp-server/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/mryanb/omnifocus-mcp-server/releases/tag/v0.1.0

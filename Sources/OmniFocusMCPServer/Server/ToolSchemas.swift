@@ -341,6 +341,7 @@ enum ToolSchemas {
                         "deferDate": .object(["type": .array(["string", "null"].map { Value.string($0) })]),
                         "estimatedMinutes": .object(["type": .array(["integer", "null"].map { Value.string($0) })]),
                         "tagIds": .object(["type": "array", "items": .object(["type": "string"])]),
+                        "projectId": .object(["type": .array(["string", "null"].map { Value.string($0) }), "description": "Move task to a project by ID, or null to move to Inbox"]),
                         "status": .object([
                             "type": "string",
                             "enum": .array(["complete", "drop", "active"].map { Value.string($0) }),

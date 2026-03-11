@@ -444,6 +444,17 @@ enum JSBuilder {
         if let mins = patch["estimatedMinutes"] as? Int {
             updates.append("t.estimatedMinutes = \(mins);")
         }
+        if let key = "projectId" as String?, patch.keys.contains(key) {
+            if let projectId = patch[key] as? String {
+                updates.append("""
+                { const proj = Project.byIdentifier("\(projectId.jsEscaped)"); \
+                if (!proj) return JSON.stringify({error: "not_found", message: "Project not found"}); \
+                moveTasks([t], proj); }
+                """)
+            } else {
+                updates.append("moveTasks([t], Inbox);")
+            }
+        }
         if let tagIds = patch["tagIds"] as? [String] {
             updates.append("t.clearTags();")
             for tagId in tagIds {
@@ -479,6 +490,8 @@ enum JSBuilder {
                 flagged: t.flagged,
                 completed: t.completed,
                 dueDate: t.dueDate ? t.dueDate.toISOString() : null,
+                projectId: t.containingProject ? t.containingProject.id.primaryKey : null,
+                projectName: t.containingProject ? t.containingProject.name : null,
                 url: "omnifocus:///task/" + t.id.primaryKey
             });
         })()
