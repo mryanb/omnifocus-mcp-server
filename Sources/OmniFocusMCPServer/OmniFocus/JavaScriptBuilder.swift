@@ -356,54 +356,56 @@ enum JSBuilder {
         estimatedMinutes: Int?
     ) -> String {
         let escapedName = name.jsEscaped
-        var props: [String] = ["name: \"\(escapedName)\""]
-        if let note { props.append("note: \"\(note.jsEscaped)\"") }
-        if let dueDate { props.append("dueDate: new Date(\"\(dueDate.jsEscaped)\")") }
-        if let deferDate { props.append("deferDate: new Date(\"\(deferDate.jsEscaped)\")") }
-        if let flagged { props.append("flagged: \(flagged)") }
-        if let mins = estimatedMinutes { props.append("estimatedMinutes: \(mins)") }
 
-        let propsStr = props.joined(separator: ", ")
-
+        // Determine creation location
         var locationCode: String
         if let parentId {
             locationCode = """
             const parent = Task.byIdentifier("\(parentId.jsEscaped)");
             if (!parent) return JSON.stringify({error: "not_found", message: "Parent task not found"});
-            const t = new Task(\(propsStr), parent);
+            const t = new Task("\(escapedName)", parent);
             """
         } else if let projectId {
             locationCode = """
             const proj = Project.byIdentifier("\(projectId.jsEscaped)");
             if (!proj) return JSON.stringify({error: "not_found", message: "Project not found"});
-            const t = new Task(\(propsStr), proj);
+            const t = new Task("\(escapedName)", proj);
             """
         } else {
             locationCode = """
-            const t = new Task(\(propsStr), inbox);
+            const t = new Task("\(escapedName)", inbox);
             """
         }
 
+        // Set properties after creation
+        var propCode: [String] = []
+        if let note { propCode.append("t.note = \"\(note.jsEscaped)\";") }
+        if let dueDate { propCode.append("t.dueDate = new Date(\"\(dueDate.jsEscaped)\");") }
+        if let deferDate { propCode.append("t.deferDate = new Date(\"\(deferDate.jsEscaped)\");") }
+        if let flagged { propCode.append("t.flagged = \(flagged);") }
+        if let mins = estimatedMinutes { propCode.append("t.estimatedMinutes = \(mins);") }
+
         // Tag assignment
-        var tagCode = ""
         if let tagIds, !tagIds.isEmpty {
             let lookups = tagIds.map { "Tag.byIdentifier(\"\($0.jsEscaped)\")" }.joined(separator: ", ")
-            tagCode = "[\(lookups)].filter(x => x).forEach(tag => t.addTag(tag));"
+            propCode.append("[\(lookups)].filter(x => x).forEach(tag => t.addTag(tag));")
         } else if let tagNames, !tagNames.isEmpty {
             let lookups = tagNames.map { "\"\($0.jsEscaped)\"" }.joined(separator: ", ")
-            tagCode = """
+            propCode.append("""
             [\(lookups)].forEach(name => {
                 let tag = flattenedTags.byName(name);
                 if (!tag) tag = new Tag(name);
                 t.addTag(tag);
             });
-            """
+            """)
         }
+
+        let propsStr = propCode.joined(separator: "\n            ")
 
         return """
         (() => {
             \(locationCode)
-            \(tagCode)
+            \(propsStr)
             return JSON.stringify({
                 id: t.id.primaryKey,
                 name: t.name,

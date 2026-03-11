@@ -68,12 +68,13 @@ struct JavaScriptBuilderTests {
             flagged: true,
             estimatedMinutes: 30
         )
-        #expect(js.contains("Test Task"))
-        #expect(js.contains("A note"))
-        #expect(js.contains("flagged: true"))
-        #expect(js.contains("estimatedMinutes: 30"))
+        #expect(js.contains("new Task(\"Test Task\""))
+        #expect(js.contains("t.note = \"A note\""))
+        #expect(js.contains("t.flagged = true"))
+        #expect(js.contains("t.estimatedMinutes = 30"))
         #expect(js.contains("Work"))
-        #expect(js.contains("new Task"))
+        // Properties must be set AFTER construction, not as constructor args
+        #expect(!js.contains("new Task(name:"))
     }
 
     @Test("createTask with project target")
@@ -92,6 +93,8 @@ struct JavaScriptBuilderTests {
         )
         #expect(js.contains("Project.byIdentifier"))
         #expect(js.contains("proj123"))
+        #expect(js.contains("new Task(\"Sub task\", proj)"))
+        #expect(!js.contains("new Task(name:"))
     }
 
     @Test("updateTask applies patch fields")
