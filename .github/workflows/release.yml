@@ -17,6 +17,13 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_16.3.app
 
+      - name: Inject version from tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          sed -i '' "s/static let version = \".*\"/static let version = \"$VERSION\"/" \
+            Sources/OmniFocusMCPServer/Server/MCPServer.swift
+          grep 'static let version' Sources/OmniFocusMCPServer/Server/MCPServer.swift
+
       - name: Build arm64
         run: swift build -c release --arch arm64
 
