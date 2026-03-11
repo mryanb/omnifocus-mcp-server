@@ -20,19 +20,12 @@ Single universal binary — no Node.js, no Python, no runtime dependencies.
 
 ## Installation
 
-### Homebrew
-
-```bash
-brew tap ryanbantz/tap
-brew install ryanbantz/tap/omnifocus-mcp-server
-```
-
 ### Direct Download
 
-Download the universal binary from [GitHub Releases](https://github.com/ryanbantz/omnifocus-mcp-server/releases):
+Download the universal binary from [GitHub Releases](https://github.com/mryanb/omnifocus-mcp-server/releases):
 
 ```bash
-curl -L -o omnifocus-mcp-server https://github.com/ryanbantz/omnifocus-mcp-server/releases/latest/download/omnifocus-mcp-server-universal
+curl -L -o omnifocus-mcp-server https://github.com/mryanb/omnifocus-mcp-server/releases/latest/download/omnifocus-mcp-server-universal
 chmod +x omnifocus-mcp-server
 sudo mv omnifocus-mcp-server /usr/local/bin/
 ```
@@ -40,7 +33,7 @@ sudo mv omnifocus-mcp-server /usr/local/bin/
 ### Build from Source
 
 ```bash
-git clone https://github.com/ryanbantz/omnifocus-mcp-server.git
+git clone https://github.com/mryanb/omnifocus-mcp-server.git
 cd omnifocus-mcp-server
 swift build -c release
 cp .build/release/omnifocus-mcp-server /usr/local/bin/
@@ -58,18 +51,6 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
       "env": {
         "OMNIFOCUS_MCP_LOG_LEVEL": "info"
       }
-    }
-  }
-}
-```
-
-Or if installed via Homebrew:
-
-```json
-{
-  "mcpServers": {
-    "omnifocus": {
-      "command": "omnifocus-mcp-server"
     }
   }
 }

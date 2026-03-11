@@ -49,7 +49,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Configuration** — Environment variables (`OMNIFOCUS_MCP_*`) and optional config file (`~/.config/omnifocus-mcp/config.json`)
 - **Safety controls** — Dry-run defaults, single-use confirm tokens (5-minute TTL), config-gated batch/delete operations, tool allowlist
 - **CI/CD** — GitHub Actions for build/test/lint on push, automated universal binary releases on tag
-- **Homebrew formula** — `brew install ryanbantz/tap/omnifocus-mcp-server`
 
-[0.1.1]: https://github.com/ryanbantz/omnifocus-mcp-server/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/ryanbantz/omnifocus-mcp-server/releases/tag/v0.1.0
+[0.1.1]: https://github.com/mryanb/omnifocus-mcp-server/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/mryanb/omnifocus-mcp-server/releases/tag/v0.1.0
