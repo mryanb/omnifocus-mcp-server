@@ -1,6 +1,25 @@
 import Foundation
+import JavaScriptCore
 import Testing
 @testable import OmniFocusMCPServer
+
+// MARK: - JS Syntax Validation Helper
+
+/// Checks that a JavaScript string is syntactically valid by parsing it in JavaScriptCore.
+/// This catches bugs like using Swift-style named parameters in JS constructor calls.
+private func assertValidJSSyntax(_ js: String, sourceLocation: SourceLocation = #_sourceLocation) {
+    let ctx = JSContext()!
+    // Wrap in a try/catch so syntax errors are captured, not thrown
+    let wrapped = "try { \(js) } catch(e) { e.toString(); }"
+    ctx.evaluateScript(wrapped)
+    if let exception = ctx.exception {
+        let msg = exception.toString() ?? "unknown JS error"
+        // Only fail on SyntaxError (runtime errors like "Task is not defined" are expected)
+        if msg.contains("SyntaxError") {
+            Issue.record("Generated JS has syntax error: \(msg)\n\nJS:\n\(js)", sourceLocation: sourceLocation)
+        }
+    }
+}
 
 @Suite("JavaScriptBuilder")
 struct JavaScriptBuilderTests {
@@ -265,5 +284,92 @@ struct JavaScriptBuilderTests {
         )
         #expect(js.contains("Project.Status.Active"))
         #expect(js.contains("flattenedProjects"))
+    }
+
+    // MARK: - JS Syntax Validation (JavaScriptCore)
+
+    @Test("createTask generates syntactically valid JavaScript")
+    func createTaskJSSyntax() {
+        // Minimal
+        assertValidJSSyntax(JSBuilder.createTask(
+            name: "Test", note: nil, projectId: nil, parentId: nil,
+            tagIds: nil, tagNames: nil, dueDate: nil, deferDate: nil,
+            flagged: nil, estimatedMinutes: nil
+        ))
+
+        // All fields populated
+        assertValidJSSyntax(JSBuilder.createTask(
+            name: "Task with \"quotes\" and special chars",
+            note: "A note\nwith newlines",
+            projectId: nil, parentId: nil,
+            tagIds: ["tag1", "tag2"],
+            tagNames: nil,
+            dueDate: "2026-03-15T17:00:00Z",
+            deferDate: "2026-03-10T09:00:00Z",
+            flagged: true,
+            estimatedMinutes: 30
+        ))
+
+        // With project target
+        assertValidJSSyntax(JSBuilder.createTask(
+            name: "Project task", note: "note", projectId: "proj123",
+            parentId: nil, tagIds: nil, tagNames: ["Work"],
+            dueDate: nil, deferDate: nil, flagged: false, estimatedMinutes: nil
+        ))
+
+        // With parent task target
+        assertValidJSSyntax(JSBuilder.createTask(
+            name: "Subtask", note: nil, projectId: nil,
+            parentId: "parent456", tagIds: nil, tagNames: nil,
+            dueDate: nil, deferDate: nil, flagged: nil, estimatedMinutes: nil
+        ))
+    }
+
+    @Test("updateTask generates syntactically valid JavaScript")
+    func updateTaskJSSyntax() {
+        assertValidJSSyntax(JSBuilder.updateTask(id: "abc123", patch: [
+            "name": "New Name",
+            "note": "Updated note with \"quotes\"",
+            "flagged": true,
+            "dueDate": "2026-03-15T17:00:00Z",
+            "estimatedMinutes": 45,
+            "tagIds": ["t1", "t2"],
+            "status": "complete",
+        ]))
+
+        // projectId move
+        assertValidJSSyntax(JSBuilder.updateTask(id: "task1", patch: [
+            "projectId": "proj99",
+        ]))
+
+        // projectId null (move to inbox)
+        assertValidJSSyntax(JSBuilder.updateTask(id: "task1", patch: [
+            "projectId": NSNull(),
+        ]))
+    }
+
+    @Test("read tools generate syntactically valid JavaScript")
+    func readToolsJSSyntax() {
+        assertValidJSSyntax(JSBuilder.listInbox(fields: TaskFieldSet.standard, limit: 50, offset: 0))
+        assertValidJSSyntax(JSBuilder.listToday(fields: TaskFieldSet.standard, limit: 50, offset: 0))
+        assertValidJSSyntax(JSBuilder.listFlagged(fields: TaskFieldSet.minimal, limit: 20, offset: 0))
+        assertValidJSSyntax(JSBuilder.listForecast(fields: TaskFieldSet.standard, limit: 50, offset: 0))
+        assertValidJSSyntax(JSBuilder.listPerspectives())
+        assertValidJSSyntax(JSBuilder.getTaskById(id: "test-id", fields: TaskFieldSet.standard))
+        assertValidJSSyntax(JSBuilder.listProjects(status: "active", fields: ProjectFieldSet.minimal, limit: 50, offset: 0))
+        assertValidJSSyntax(JSBuilder.listTags(limit: 50))
+        assertValidJSSyntax(JSBuilder.countTasks(project: "Work", tag: "Important", flagged: true, completed: false, inbox: false, status: nil))
+
+        assertValidJSSyntax(JSBuilder.searchTasks(
+            query: "test", project: "Work", tag: "Urgent",
+            flagged: true, completed: false,
+            dueBefore: "2026-12-31", dueAfter: "2026-01-01", status: "available",
+            fields: TaskFieldSet.standard, limit: 50, offset: 0
+        ))
+
+        assertValidJSSyntax(JSBuilder.listPerspectiveTasks(
+            perspectiveId: "abc123", perspectiveType: "custom",
+            fields: TaskFieldSet.standard, limit: 50, offset: 0
+        ))
     }
 }
