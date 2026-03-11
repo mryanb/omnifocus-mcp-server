@@ -8,4 +8,5 @@ DerivedData/
 dist/
 *.xcodeproj
 _private/
+Formula/
 .claude/
