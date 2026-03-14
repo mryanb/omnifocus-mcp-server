@@ -373,7 +373,7 @@ enum JSBuilder {
             """
         } else {
             locationCode = """
-            const t = new Task("\(escapedName)", inbox);
+            const t = new Task("\(escapedName)");
             """
         }
 
@@ -454,7 +454,7 @@ enum JSBuilder {
                 moveTasks([t], proj); }
                 """)
             } else {
-                updates.append("moveTasks([t], Inbox);")
+                updates.append("moveTasks([t], inbox.ending);")
             }
         }
         if let tagIds = patch["tagIds"] as? [String] {
@@ -495,6 +495,71 @@ enum JSBuilder {
                 projectId: t.containingProject ? t.containingProject.id.primaryKey : null,
                 projectName: t.containingProject ? t.containingProject.name : null,
                 url: "omnifocus:///task/" + t.id.primaryKey
+            });
+        })()
+        """
+    }
+
+    /// Build JS to update a project by ID with patch fields.
+    static func updateProject(id: String, patch: [String: Any]) -> String {
+        let escaped = id.jsEscaped
+        var updates: [String] = []
+
+        if let name = patch["name"] as? String {
+            updates.append("p.name = \"\(name.jsEscaped)\";")
+        }
+        if let note = patch["note"] as? String {
+            updates.append("p.note = \"\(note.jsEscaped)\";")
+        }
+        if let key = "dueDate" as String?, patch.keys.contains(key) {
+            if let date = patch[key] as? String {
+                updates.append("p.dueDate = new Date(\"\(date.jsEscaped)\");")
+            } else {
+                updates.append("p.dueDate = null;")
+            }
+        }
+        if let key = "deferDate" as String?, patch.keys.contains(key) {
+            if let date = patch[key] as? String {
+                updates.append("p.deferDate = new Date(\"\(date.jsEscaped)\");")
+            } else {
+                updates.append("p.deferDate = null;")
+            }
+        }
+        if let sequential = patch["sequential"] as? Bool {
+            updates.append("p.sequential = \(sequential);")
+        }
+        if let status = patch["status"] as? String {
+            switch status {
+            case "active":
+                updates.append("p.status = Project.Status.Active;")
+            case "on_hold":
+                updates.append("p.status = Project.Status.OnHold;")
+            case "complete":
+                updates.append("p.markComplete();")
+            case "drop":
+                updates.append("p.drop(true);")
+            default:
+                break
+            }
+        }
+
+        let updatesStr = updates.joined(separator: "\n            ")
+
+        return """
+        (() => {
+            const p = Project.byIdentifier("\(escaped)");
+            if (!p) return JSON.stringify({error: "not_found"});
+            \(updatesStr)
+            return JSON.stringify({
+                id: p.id.primaryKey,
+                name: p.name,
+                status: p.status === Project.Status.Active ? "active" : (p.status === Project.Status.OnHold ? "on_hold" : (p.status === Project.Status.Done ? "completed" : "dropped")),
+                note: p.note || null,
+                sequential: p.sequential,
+                dueDate: p.dueDate ? p.dueDate.toISOString() : null,
+                deferDate: p.deferDate ? p.deferDate.toISOString() : null,
+                taskCount: p.flattenedTasks.length,
+                url: "omnifocus:///task/" + p.id.primaryKey
             });
         })()
         """

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2026-03-14
+
+### Added
+
+- `update_project` tool — patch project metadata (name, note, dueDate, deferDate, sequential, status) with dry-run/confirm-token safety flow
+
+### Fixed
+
+- `create_task` now works for Inbox tasks — was passing `inbox` as position arg to `new Task()`, but Task constructor rejects type `Inbox`; now omits position arg entirely (defaults to inbox)
+- `update_task` move-to-inbox (`projectId: null`) now uses `inbox.ending` instead of `Inbox` which had the same type mismatch risk
+- `create_task_via_url` now awaits URL dispatch and, in Pro mode, verifies creation by searching for the task to return its ID
+
 ## [0.2.1] - 2026-03-10
 
 ### Fixed
@@ -69,6 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Safety controls** — Dry-run defaults, single-use confirm tokens (5-minute TTL), config-gated batch/delete operations, tool allowlist
 - **CI/CD** — GitHub Actions for build/test/lint on push, automated universal binary releases on tag
 
+[0.2.2]: https://github.com/mryanb/omnifocus-mcp-server/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/mryanb/omnifocus-mcp-server/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/mryanb/omnifocus-mcp-server/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/mryanb/omnifocus-mcp-server/compare/v0.1.0...v0.1.1

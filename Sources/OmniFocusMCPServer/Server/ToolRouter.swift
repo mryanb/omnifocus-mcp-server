@@ -37,7 +37,7 @@ actor ToolRouter {
             "list_inbox", "list_today", "list_flagged", "list_forecast",
             "list_projects", "list_tags", "list_perspectives", "get_perspective_tasks",
             "get_task_by_id", "search_tasks", "get_task_count",
-            "create_task", "update_task", "batch_update_tasks",
+            "create_task", "update_task", "update_project", "batch_update_tasks",
         ]
         if proRequired.contains(name) && mode != .pro {
             return errorResult(OFMCPError.proRequired(name).structured)
@@ -73,6 +73,8 @@ actor ToolRouter {
                 return try await handleCreateTask(arguments)
             case "update_task":
                 return try await handleUpdateTask(arguments)
+            case "update_project":
+                return try await handleUpdateProject(arguments)
             case "batch_update_tasks":
                 return try await handleBatchUpdateTasks(arguments)
             case "create_task_via_url":
@@ -447,6 +449,69 @@ actor ToolRouter {
         return textResult(result)
     }
 
+    private func handleUpdateProject(_ args: [String: Value]?) async throws -> CallTool.Result {
+        guard let id = args?["id"]?.stringValue, !id.isEmpty else {
+            throw OFMCPError.invalidInput("'id' is required")
+        }
+        guard let patchValue = args?["patch"] else {
+            throw OFMCPError.invalidInput("'patch' is required")
+        }
+
+        let dryRun = args?["dry_run"]?.boolValue ?? true
+        let confirmToken = args?["confirm_token"]?.stringValue
+
+        let patch = valueToDictionary(patchValue)
+
+        let requiresConfirm = projectPatchRequiresConfirmation(patch)
+        let patchHash = ConfirmTokenManager.hashPatch(patch)
+
+        if dryRun {
+            let token = requiresConfirm ? await confirmTokens.generate(taskId: id, patchHash: patchHash) : nil
+
+            var preview: [String: Any] = [
+                "dry_run": true,
+                "project_id": id,
+                "changes": patch,
+                "requires_confirmation": requiresConfirm,
+            ]
+            if let token {
+                preview["confirm_token"] = token
+                preview["message"] = "This operation includes irreversible status change(s). Re-call with dry_run=false and this confirm_token to apply."
+            } else {
+                preview["message"] = "Re-call with dry_run=false to apply these changes."
+            }
+            return textResult(toJSON(preview))
+        }
+
+        if requiresConfirm {
+            guard let token = confirmToken else {
+                throw OFMCPError.invalidInput("Status transitions require confirm_token from a dry_run. Call with dry_run=true first.")
+            }
+            let valid = await confirmTokens.verify(token: token, taskId: id, patchHash: patchHash)
+            guard valid else {
+                throw OFMCPError.invalidConfirmToken
+            }
+        }
+
+        let js = JSBuilder.updateProject(id: id, patch: patch)
+        let result = try await bridge.evaluateJS(js)
+
+        if result.contains("\"error\"") && result.contains("not_found") {
+            throw OFMCPError.invalidInput("Project '\(id)' not found")
+        }
+
+        await cache.invalidateAll()
+        Log.info("Project updated: \(id)", tool: "update_project")
+
+        return textResult(result)
+    }
+
+    /// Determines if a project patch contains destructive operations requiring confirmation.
+    private func projectPatchRequiresConfirmation(_ patch: [String: Any]) -> Bool {
+        guard let status = patch["status"] as? String else { return false }
+        return status == "complete" || status == "drop"
+    }
+
     private func handleBatchUpdateTasks(_ args: [String: Value]?) async throws -> CallTool.Result {
         guard config.bulkOpsEnabled else {
             throw OFMCPError.configDisabled("bulk_ops")
@@ -515,14 +580,43 @@ actor ToolRouter {
             throw OFMCPError.invalidInput("Failed to build URL")
         }
 
-        OmniFocusURL.open(url)
+        await OmniFocusURL.open(url)
         Log.info("Task created via URL: \(name)", tool: "create_task_via_url")
 
+        // In Pro mode, wait briefly and search for the task to return its ID
+        if mode == .pro {
+            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+            let escapedName = name.jsEscaped
+            let searchJS = """
+            (() => {
+                const matches = flattenedTasks.filter(t => t.name === "\(escapedName)" && t.taskStatus !== Task.Status.Completed && t.taskStatus !== Task.Status.Dropped);
+                if (matches.length === 0) return JSON.stringify({found: false});
+                const t = matches[matches.length - 1];
+                return JSON.stringify({found: true, id: t.id.primaryKey, name: t.name, url: "omnifocus:///task/" + t.id.primaryKey});
+            })()
+            """
+            if let result = try? await bridge.evaluateJS(searchJS),
+               let data = result.data(using: .utf8),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               json["found"] as? Bool == true {
+                await cache.invalidateAll()
+                return textResult(toJSON([
+                    "created": true,
+                    "name": json["name"] as? String ?? name,
+                    "id": json["id"] as? String ?? "",
+                    "url": json["url"] as? String ?? url.absoluteString,
+                    "method": "url_scheme_verified",
+                ]))
+            }
+        }
+
+        await cache.invalidateAll()
         return textResult(toJSON([
             "created": true,
             "name": name,
             "url": url.absoluteString,
-            "note": "Task created via URL scheme. ID is not available via this method.",
+            "note": "Task sent via URL scheme. Use create_task for verified creation with task ID.",
+            "method": "url_scheme_unverified",
         ]))
     }
 
@@ -535,7 +629,7 @@ actor ToolRouter {
             throw OFMCPError.invalidInput("Failed to build URL for id '\(id)'")
         }
 
-        OmniFocusURL.open(url)
+        await OmniFocusURL.open(url)
 
         return textResult(toJSON(["opened": true, "url": url.absoluteString]))
     }

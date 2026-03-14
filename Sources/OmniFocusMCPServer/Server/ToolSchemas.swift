@@ -26,6 +26,7 @@ enum ToolSchemas {
             // Mutation tools
             tools.append(createTaskTool)
             tools.append(updateTaskTool)
+            tools.append(updateProjectTool)
 
             // Batch tools (config-gated)
             if config.bulkOpsEnabled {
@@ -360,6 +361,45 @@ enum ToolSchemas {
                     "description": "Token from dry_run. Required for irreversible status transitions",
                 ]),
                 taskFieldsProperty.0: taskFieldsProperty.1,
+            ]),
+            "required": .array([.string("id"), .string("patch")]),
+            "additionalProperties": false,
+        ]),
+        annotations: Tool.Annotations(readOnlyHint: false, destructiveHint: true, idempotentHint: false)
+    )
+
+    static let updateProjectTool = Tool(
+        name: "update_project",
+        description: "Update a project using patch semantics. Only provided fields change. Status transitions (complete/drop) require confirm_token from a dry_run",
+        inputSchema: .object([
+            "type": "object",
+            "properties": .object([
+                "id": .object(["type": "string", "description": "Stable OmniFocus project ID"]),
+                "patch": .object([
+                    "type": "object",
+                    "properties": .object([
+                        "name": .object(["type": "string", "minLength": 1]),
+                        "note": .object(["type": "string"]),
+                        "dueDate": .object(["type": .array(["string", "null"].map { Value.string($0) })]),
+                        "deferDate": .object(["type": .array(["string", "null"].map { Value.string($0) })]),
+                        "sequential": .object(["type": "boolean"]),
+                        "status": .object([
+                            "type": "string",
+                            "enum": .array(["active", "on_hold", "complete", "drop"].map { Value.string($0) }),
+                            "description": "Transition project status. complete/drop are irreversible and require confirm_token",
+                        ]),
+                    ]),
+                    "additionalProperties": false,
+                ]),
+                "dry_run": .object([
+                    "type": "boolean",
+                    "default": true,
+                    "description": "When true, returns preview without applying. Default true for safety",
+                ]),
+                "confirm_token": .object([
+                    "type": "string",
+                    "description": "Token from dry_run. Required for irreversible status transitions",
+                ]),
             ]),
             "required": .array([.string("id"), .string("patch")]),
             "additionalProperties": false,

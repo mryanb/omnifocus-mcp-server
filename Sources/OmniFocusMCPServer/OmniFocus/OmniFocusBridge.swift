@@ -172,10 +172,9 @@ enum OmniFocusURL {
         URL(string: "omnifocus:///task/\(id)")
     }
 
-    /// Open a URL via NSWorkspace (fire-and-forget).
-    static func open(_ url: URL) {
-        DispatchQueue.main.async {
-            NSWorkspace.shared.open(url)
-        }
+    /// Open a URL via NSWorkspace and wait for it to be dispatched.
+    @MainActor
+    static func open(_ url: URL) async {
+        NSWorkspace.shared.open(url)
     }
 }

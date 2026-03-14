@@ -143,7 +143,7 @@ struct JavaScriptBuilderTests {
     func updateTaskMoveToInbox() {
         let patch: [String: Any] = ["projectId": NSNull()]
         let js = JSBuilder.updateTask(id: "task1", patch: patch)
-        #expect(js.contains("moveTasks([t], Inbox)"))
+        #expect(js.contains("moveTasks([t], inbox.ending)"))
     }
 
     @Test("updateTask response includes projectId and projectName")
@@ -286,6 +286,61 @@ struct JavaScriptBuilderTests {
         #expect(js.contains("flattenedProjects"))
     }
 
+    // MARK: - updateProject Tests
+
+    @Test("updateProject applies patch fields")
+    func updateProject() {
+        let js = JSBuilder.updateProject(id: "proj1", patch: [
+            "name": "Renamed Project",
+            "note": "Updated note",
+            "sequential": true,
+            "status": "on_hold",
+        ])
+        #expect(js.contains("Project.byIdentifier(\"proj1\")"))
+        #expect(js.contains("p.name = \"Renamed Project\""))
+        #expect(js.contains("p.note = \"Updated note\""))
+        #expect(js.contains("p.sequential = true"))
+        #expect(js.contains("Project.Status.OnHold"))
+    }
+
+    @Test("updateProject sets and clears dates")
+    func updateProjectDates() {
+        let js = JSBuilder.updateProject(id: "proj2", patch: [
+            "dueDate": "2026-04-01T17:00:00Z",
+            "deferDate": "2026-03-15T09:00:00Z",
+        ])
+        #expect(js.contains("p.dueDate = new Date(\"2026-04-01T17:00:00Z\")"))
+        #expect(js.contains("p.deferDate = new Date(\"2026-03-15T09:00:00Z\")"))
+
+        let jsNull = JSBuilder.updateProject(id: "proj2", patch: [
+            "dueDate": NSNull(),
+        ])
+        #expect(jsNull.contains("p.dueDate = null"))
+    }
+
+    @Test("updateProject complete and drop use correct methods")
+    func updateProjectStatusTransitions() {
+        let jsComplete = JSBuilder.updateProject(id: "proj3", patch: ["status": "complete"])
+        #expect(jsComplete.contains("p.markComplete()"))
+
+        let jsDrop = JSBuilder.updateProject(id: "proj3", patch: ["status": "drop"])
+        #expect(jsDrop.contains("p.drop(true)"))
+
+        let jsActive = JSBuilder.updateProject(id: "proj3", patch: ["status": "active"])
+        #expect(jsActive.contains("Project.Status.Active"))
+    }
+
+    @Test("updateProject response includes all project fields")
+    func updateProjectResponse() {
+        let js = JSBuilder.updateProject(id: "proj1", patch: ["name": "Test"])
+        #expect(js.contains("id: p.id.primaryKey"))
+        #expect(js.contains("name: p.name"))
+        #expect(js.contains("status:"))
+        #expect(js.contains("dueDate:"))
+        #expect(js.contains("deferDate:"))
+        #expect(js.contains("taskCount:"))
+    }
+
     // MARK: - JS Syntax Validation (JavaScriptCore)
 
     @Test("createTask generates syntactically valid JavaScript")
@@ -346,6 +401,30 @@ struct JavaScriptBuilderTests {
         assertValidJSSyntax(JSBuilder.updateTask(id: "task1", patch: [
             "projectId": NSNull(),
         ]))
+    }
+
+    @Test("updateProject generates syntactically valid JavaScript")
+    func updateProjectJSSyntax() {
+        // All fields
+        assertValidJSSyntax(JSBuilder.updateProject(id: "proj1", patch: [
+            "name": "New Name",
+            "note": "Updated note",
+            "dueDate": "2026-04-01T17:00:00Z",
+            "deferDate": "2026-03-15T09:00:00Z",
+            "sequential": true,
+            "status": "complete",
+        ]))
+
+        // Null dates
+        assertValidJSSyntax(JSBuilder.updateProject(id: "proj1", patch: [
+            "dueDate": NSNull(),
+            "deferDate": NSNull(),
+        ]))
+
+        // Status transitions
+        assertValidJSSyntax(JSBuilder.updateProject(id: "proj1", patch: ["status": "drop"]))
+        assertValidJSSyntax(JSBuilder.updateProject(id: "proj1", patch: ["status": "on_hold"]))
+        assertValidJSSyntax(JSBuilder.updateProject(id: "proj1", patch: ["status": "active"]))
     }
 
     @Test("read tools generate syntactically valid JavaScript")

@@ -4,7 +4,7 @@ import MCP
 /// Server metadata.
 enum ServerInfo {
     static let name = "omnifocus-mcp-server"
-    static let version = "0.2.1"
+    static let version = "0.2.2"
 }
 
 /// Sets up and runs the MCP server with stdio transport.

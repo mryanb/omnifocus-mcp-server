@@ -137,6 +137,39 @@ struct ToolRouterTests {
         #expect(bridge.callCount == 3)
     }
 
+    @Test("update_project dry_run returns preview with token")
+    func updateProjectDryRun() async {
+        let (router, _) = await makeRouter()
+        let result = await router.handle(name: "update_project", arguments: [
+            "id": .string("proj1"),
+            "patch": .object(["status": .string("complete")]),
+        ])
+        let text = extractText(result)
+        #expect(text.contains("dry_run"))
+        #expect(text.contains("confirm_token"))
+        #expect(text.contains("project_id"))
+    }
+
+    @Test("update_project without token fails for destructive ops")
+    func updateProjectNoToken() async {
+        let (router, _) = await makeRouter()
+        let result = await router.handle(name: "update_project", arguments: [
+            "id": .string("proj1"),
+            "patch": .object(["status": .string("drop")]),
+            "dry_run": .bool(false),
+        ])
+        let text = extractText(result)
+        #expect(text.contains("confirm_token"))
+    }
+
+    @Test("update_project requires id parameter")
+    func updateProjectNoId() async {
+        let (router, _) = await makeRouter()
+        let result = await router.handle(name: "update_project", arguments: [:])
+        let text = extractText(result)
+        #expect(text.contains("invalid_input"))
+    }
+
     @Test("unknown tool returns error")
     func unknownTool() async {
         let (router, _) = await makeRouter()
